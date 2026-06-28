@@ -47,9 +47,14 @@ def _resp(
 
 
 def _handle_esperando_foto(state: ConversationState, request: ChatRequest) -> ChatResponse:
+    if request.tipo == "texto" and request.texto:
+        respuesta = gemini_service.responder_chat_abierto(request.texto)
+        return _resp(respuesta, "foto", estado=state.estado)
+
     if request.tipo != "foto" or not request.foto_base64:
         return _resp(
-            "Para iniciar tu denuncia, envíame una foto del animal o de la situación.",
+            "Cuando quieras, envíame una foto del animal o de la situación para iniciar "
+            "tu denuncia.",
             "foto",
             estado=state.estado,
         )

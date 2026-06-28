@@ -72,6 +72,27 @@ def identificar_especie(foto_bytes: bytes) -> dict:
         return dict(_ESPECIE_FALLBACK)
 
 
+def responder_chat_abierto(mensaje_usuario: str) -> str:
+    prompt = (
+        "Eres FaunaAlerta Bot, un asistente conversacional que ayuda a ciudadanos en "
+        "Colombia a denunciar situaciones que afectan fauna silvestre amenazada. El "
+        "usuario todavía no ha enviado ninguna foto. Responde de forma breve, cálida y "
+        "natural a su mensaje (puede ser un saludo, una pregunta sobre cómo funciona "
+        "esto, o cualquier otra cosa). Cierra siempre recordándole, en una frase corta, "
+        "que cuando esté listo puede enviarte una foto del animal o de la situación "
+        "para iniciar su denuncia.\n\n"
+        f"Mensaje del usuario: {mensaje_usuario}"
+    )
+    try:
+        respuesta = _modelo().invoke(prompt)
+        return str(respuesta.content).strip()
+    except Exception:
+        return (
+            "¡Hola! Soy FaunaAlerta Bot 🐾. Cuando quieras, envíame una foto del animal "
+            "o de la situación que quieres reportar para iniciar tu denuncia."
+        )
+
+
 def redactar_resumen_hechos(datos: dict) -> str:
     prompt = (
         "Eres un asistente que redacta el resumen de hechos para una denuncia ambiental "

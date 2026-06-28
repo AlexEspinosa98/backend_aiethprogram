@@ -57,15 +57,23 @@ Content-Type: application/json
 ## Cómo el frontend sabe qué pedir en cada momento
 
 El backend **no** asume nada sobre la UI: en cada respuesta te dice explícitamente,
-con `tipo_input_esperado`, qué control mostrarle al usuario a continuación. El
-frontend solo necesita reaccionar a ese campo:
+con `tipo_input_esperado`, qué **control adicional** mostrarle al usuario a
+continuación. Pero esto es clave para que se sienta un chat abierto, no un wizard
+rígido:
 
-| `tipo_input_esperado` | Qué debe mostrar/hacer el frontend |
+> **El campo de texto libre debe estar SIEMPRE visible**, sin importar el valor de
+> `tipo_input_esperado`. Este campo solo indica qué control *extra* mostrar encima del
+> texto (cámara, ubicación o botones rápidos) — nunca reemplaza la posibilidad de
+> escribir. Así el usuario puede saludar, hacer preguntas o charlar en cualquier
+> momento, y el bot le sigue la conversación (especialmente antes de enviar la
+> primera foto, ver el ejemplo 0 más abajo) sin quedar bloqueado.
+
+| `tipo_input_esperado` | Control adicional a mostrar (además del texto, que siempre está) |
 |---|---|
-| `"foto"` | Mostrar el botón de cámara/adjuntar (`<input type="file" accept="image/*" capture="environment">`), convertir a base64, enviar `{tipo: "foto", foto_base64: "..."}`. |
-| `"ubicacion"` | Mostrar el botón "Compartir mi ubicación", llamar a `navigator.geolocation.getCurrentPosition(...)`, enviar `{tipo: "ubicacion", lat, lon}`. Si el usuario niega el permiso o falla, ofrecer un campo de texto para que escriba la dirección y enviarlo como `{tipo: "texto", texto: "..."}` (el backend la geocodifica). |
-| `"botones"` | Renderizar cada string de `opciones` como un botón. Al hacer clic, enviar `{tipo: "boton", texto: "<la etiqueta exacta del botón>"}`. |
-| `"texto"` | Mostrar un campo de texto libre. Al enviar, `{tipo: "texto", texto: "..."}`. |
+| `"foto"` | Botón de cámara/adjuntar (`<input type="file" accept="image/*" capture="environment">`), convertir a base64, enviar `{tipo: "foto", foto_base64: "..."}`. |
+| `"ubicacion"` | Botón "Compartir mi ubicación", llamar a `navigator.geolocation.getCurrentPosition(...)`, enviar `{tipo: "ubicacion", lat, lon}`. Si el usuario niega el permiso o falla, puede escribir la dirección en el campo de texto y enviarla como `{tipo: "texto", texto: "..."}` (el backend la geocodifica). |
+| `"botones"` | Renderizar cada string de `opciones` como un botón rápido. Al hacer clic, enviar `{tipo: "boton", texto: "<la etiqueta exacta del botón>"}`. |
+| `"texto"` | No hay control extra; solo el campo de texto (que de todas formas siempre está ahí). |
 
 **Importante:** para `tipo: "boton"`, el backend compara el `texto` recibido contra
 listas fijas de opciones (comparación exacta de string, con tildes). Por eso el
@@ -75,9 +83,30 @@ una versión "normalizada".
 ## Flujo completo con ejemplos reales de payload
 
 El backend no necesita un mensaje de "inicio": la primera llamada de una sesión nueva
-ya puede ser directamente el envío de la foto. El mensaje de bienvenida ("¡Hola! Soy
-FaunaAlerta...", "Sube o toma una foto...") lo puede mostrar el frontend de forma
-estática antes de la primera llamada, sin necesidad de golpear el backend.
+puede ser directamente el envío de la foto, **o puede ser cualquier mensaje de texto**
+— el bot responde de forma conversacional (vía Gemini) y sigue esperando la foto sin
+bloquear la sesión. El mensaje de bienvenida ("¡Hola! Soy FaunaAlerta...") lo puede
+mostrar el frontend de forma estática antes de la primera llamada, sin necesidad de
+golpear el backend.
+
+### 0. (Opcional) Usuario charla antes de enviar la foto
+
+```json
+// Request
+{"session_id": "abc-123", "tipo": "texto", "texto": "hola, qué es esto?"}
+
+// Response
+{
+  "mensajes": ["¡Hola! FaunaAlerta Bot te ayuda a denunciar fauna silvestre amenazada en Colombia... cuando quieras, envíame una foto del animal o la situación para iniciar tu denuncia."],
+  "tipo_input_esperado": "foto",
+  "opciones": [],
+  "estado_actual": "ESPERANDO_FOTO",
+  "mapa": null
+}
+```
+
+El usuario puede seguir escribiendo todo lo que quiera (el bot le responde cada vez)
+hasta que decida enviar la foto; ahí recién avanza al paso 1.
 
 ### 1. Usuario envía la foto
 

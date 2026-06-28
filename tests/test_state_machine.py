@@ -42,6 +42,11 @@ def _stub_services(monkeypatch):
         lambda datos: "Resumen de prueba de los hechos.",
     )
     monkeypatch.setattr(
+        state_machine.gemini_service,
+        "responder_chat_abierto",
+        lambda texto: f"(respuesta simulada a: {texto})",
+    )
+    monkeypatch.setattr(
         state_machine.geocoding_service,
         "reverse_geocode",
         lambda lat, lon: {
@@ -62,6 +67,29 @@ def _stub_services(monkeypatch):
     )
 
     return enviados
+
+
+def test_chat_abierto_antes_de_la_foto(_stub_services):
+    session_id = "test-session-open"
+
+    r = state_machine.procesar_mensaje(
+        session_id, ChatRequest(session_id=session_id, tipo="texto", texto="hola, qué es esto?")
+    )
+    assert r.estado_actual == EstadoFSM.ESPERANDO_FOTO
+    assert r.tipo_input_esperado == "foto"
+    assert "respuesta simulada" in r.mensajes[0]
+
+    # la sesión sigue abierta: el usuario puede seguir charlando antes de enviar la foto
+    r = state_machine.procesar_mensaje(
+        session_id, ChatRequest(session_id=session_id, tipo="texto", texto="ok, ya entendí")
+    )
+    assert r.estado_actual == EstadoFSM.ESPERANDO_FOTO
+
+    # y en cualquier momento puede enviar la foto para arrancar la denuncia
+    r = state_machine.procesar_mensaje(
+        session_id, ChatRequest(session_id=session_id, tipo="foto", foto_base64=TINY_JPEG_B64)
+    )
+    assert r.estado_actual == EstadoFSM.CONFIRMAR_ESPECIE
 
 
 def test_flujo_completo_anonimo(_stub_services):
