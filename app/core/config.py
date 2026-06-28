@@ -15,12 +15,13 @@ class Settings(BaseSettings):
     upstash_redis_rest_token: str
     session_ttl_seconds: int = 3600
 
-    # SMTP
-    smtp_host: str
+    # SMTP (opcional por ahora: si falta host/user/password, el envío se simula
+    # imprimiendo el correo en los logs en vez de mandarlo de verdad)
+    smtp_host: str | None = None
     smtp_port: int = 587
-    smtp_user: str
-    smtp_password: str
-    smtp_from: str
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str = "FaunaAlerta Bot <no-reply@example.com>"
 
     # Geocodificación
     nominatim_user_agent: str = "FaunaAlertaBot/1.0 (contacto@example.com)"
