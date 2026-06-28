@@ -26,8 +26,9 @@ class Settings(BaseSettings):
     # Geocodificación
     nominatim_user_agent: str = "FaunaAlertaBot/1.0 (contacto@example.com)"
 
-    # Entidades / envío
-    default_fallback_email: str
+    # Entidades / envío (placeholder por defecto: cámbialo por un correo real con
+    # DEFAULT_FALLBACK_EMAIL antes de que esto reciba denuncias reales)
+    default_fallback_email: str = "denuncias-pendientes@example.com"
     demo_override_email: str | None = None
 
     # Frontend
