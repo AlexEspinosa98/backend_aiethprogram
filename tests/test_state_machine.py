@@ -58,13 +58,12 @@ def _stub_services(monkeypatch):
     monkeypatch.setattr(state_machine.image_service, "comprimir_foto", lambda foto_bytes: foto_bytes)
 
     enviados = []
-    monkeypatch.setattr(
-        state_machine.email_service,
-        "enviar_denuncia",
-        lambda destinatario, asunto, cuerpo, foto_bytes: enviados.append(
-            (destinatario, asunto, cuerpo)
-        ),
-    )
+
+    def _enviar_mock(destinatario, asunto, cuerpo, foto_bytes):
+        enviados.append((destinatario, asunto, cuerpo))
+        return "enviado"
+
+    monkeypatch.setattr(state_machine.email_service, "enviar_denuncia", _enviar_mock)
 
     return enviados
 

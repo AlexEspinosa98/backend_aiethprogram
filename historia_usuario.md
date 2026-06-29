@@ -4,6 +4,9 @@
 > **otro proyecto** (el frontend) construya el chat web contra `POST /api/chat/message`.
 > No describe código de frontend, describe el flujo y el protocolo, con ejemplos reales
 > de los payloads que ya implementa este backend.
+>
+> Para una referencia técnica compacta de campos/tipos de cada endpoint (sin la
+> narrativa del flujo), ver **[api.md](api.md)**.
 
 ## Historia de usuario
 
@@ -27,7 +30,82 @@ actuar.
 - Muestra un resumen y la entidad a la que se enviará, y pide confirmar el envío.
 - Al confirmar, envía la denuncia por correo y entrega un número de radicado.
 
-## El contrato: un único endpoint
+## Dos formas de integrar: chat conversacional o un solo disparo
+
+Este backend expone **dos endpoints** para el mismo objetivo, según cómo prefieras
+construir el frontend:
+
+| Endpoint | Cuándo usarlo |
+|---|---|
+| `POST /api/chat/message` | Si quieres que el backend lleve la conversación paso a paso (pregunta por pregunta) y guarde el progreso en su propia sesión. Es el que describe en detalle el resto de este documento. |
+| `POST /api/denuncias` | Si prefieres que **tu frontend** maneje su propio formulario/wizard multi-paso (foto, mapa, campos, etc.) y solo llame al backend **una vez al final**, con todo el contexto ya reunido. No hay sesión ni conversación: una petición, una respuesta. |
+
+### `POST /api/denuncias` (un solo disparo)
+
+```json
+// Request — todos los campos son opcionales excepto que debe venir
+// foto_base64 y/o (lat+lon o direccion) para que tenga sentido la denuncia
+{
+  "foto_base64": "<base64 de la foto, opcional>",
+  "lat": 6.1521,
+  "lon": -75.3838,
+  "direccion": null,
+  "tipo_lugar": "Negocio",
+  "descripcion_lugar": "Restaurante con el animal en una jaula pequeña en la entrada",
+  "anonima": true,
+  "contacto": null
+}
+
+// Response
+{
+  "radicado": "FA-2026-4F2A1B",
+  "mensaje": "Tu denuncia fue procesada y enviada a la entidad competente. Gracias por proteger la fauna silvestre de Colombia.",
+  "especie": {
+    "nombre_comun": "Oso de anteojos",
+    "nombre_cientifico": "Tremarctos ornatus",
+    "categoria_amenaza": "VU",
+    "nativa_colombia": true,
+    "confianza": "alta",
+    "fuente": "gemini-vision"
+  },
+  "ubicacion": {
+    "lat": 6.1521,
+    "lon": -75.3838,
+    "direccion_aprox": "Vereda La Esperanza, Rionegro, Antioquia",
+    "municipio": "Rionegro",
+    "departamento": "Antioquia"
+  },
+  "entidad_destino": {"nombre": "CORNARE", "correo": "PENDIENTE_VERIFICAR"},
+  "estado_envio": "enviado",
+  "correo": {
+    "asunto": "Denuncia ciudadana ambiental - Posible afectación a fauna silvestre amenazada - Oso de anteojos - Rionegro, Antioquia",
+    "cuerpo": "Señores\nCORNARE\n\nDe manera anónima, un ciudadano reporta a través del sistema FaunaAlerta Bot...\n\n(texto completo de la denuncia formal, igual al que se mandó/se habría mandado por correo)"
+  }
+}
+```
+
+Notas importantes de este endpoint:
+- **`foto_base64` es opcional.** Si no se envía, `especie` viene en `null` y la
+  denuncia se procesa y envía igual, solo con el contexto de texto/ubicación.
+- **Si la especie no se reconoce con certeza, no es un error.** El backend nunca
+  bloquea ni devuelve un mensaje de "no reconocido": simplemente sigue adelante y
+  `especie.confianza` queda en `"baja"` (o `especie` en `null` si no había foto). La
+  denuncia se redacta y se envía igual.
+- **Ubicación:** manda `lat`+`lon` (preferido) o `direccion` (se geocodifica). Si no
+  mandas ninguna, no hay departamento que resolver y la denuncia cae en la entidad de
+  respaldo (`DEFAULT_FALLBACK_EMAIL`).
+- **Anonimato:** si `anonima: true`, `contacto` se ignora aunque venga. Si
+  `anonima: false`, lo que pongas en `contacto` queda en el correo de la denuncia.
+- `estado_envio` te dice si el correo se mandó de verdad (`"enviado"`), se simuló
+  porque el SMTP no está configurado en el backend (`"simulado"`), o falló
+  (`"fallido"`) — en los tres casos ya se generó el `radicado` y la denuncia quedó
+  redactada igual.
+- **`correo.asunto` / `correo.cuerpo`** es el borrador exacto de la denuncia formal
+  (el mismo texto que se mandó por correo, o que se habría mandado si `estado_envio`
+  es `"simulado"`/`"fallido"`). Útil para mostrárselo al usuario como confirmación,
+  o para guardarlo/auditarlo desde el frontend.
+
+## El contrato del chat conversacional
 
 ```
 POST /api/chat/message

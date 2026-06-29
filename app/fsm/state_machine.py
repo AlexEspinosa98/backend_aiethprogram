@@ -307,10 +307,12 @@ def _enviar_denuncia(state: ConversationState) -> ChatResponse:
             image_service.base64_a_foto(state.foto_bytes_b64) if state.foto_bytes_b64 else b""
         )
 
-        email_service.enviar_denuncia(d.entidad_destino.correo, asunto, cuerpo, foto_bytes)
+        estado_envio = email_service.enviar_denuncia(
+            d.entidad_destino.correo, asunto, cuerpo, foto_bytes
+        )
 
         d.texto_denuncia = cuerpo
-        d.estado_envio = "enviado"
+        d.estado_envio = estado_envio
         d.intentos_envio += 1
         state.estado = EstadoFSM.FINALIZADO
         return _resp(

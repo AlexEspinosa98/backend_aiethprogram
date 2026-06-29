@@ -2,6 +2,7 @@ import smtplib
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import Literal
 
 from app.core.config import get_settings
 
@@ -10,7 +11,9 @@ def _smtp_configurado(settings) -> bool:
     return bool(settings.smtp_host and settings.smtp_user and settings.smtp_password)
 
 
-def enviar_denuncia(destinatario: str, asunto: str, cuerpo: str, foto_bytes: bytes) -> None:
+def enviar_denuncia(
+    destinatario: str, asunto: str, cuerpo: str, foto_bytes: bytes
+) -> Literal["enviado", "simulado"]:
     settings = get_settings()
 
     if not _smtp_configurado(settings):
@@ -23,7 +26,7 @@ def enviar_denuncia(destinatario: str, asunto: str, cuerpo: str, foto_bytes: byt
             f"[Adjunto: foto de {len(foto_bytes)} bytes]\n"
             "=== fin del ejemplo (no se envió nada de verdad) ==="
         )
-        return
+        return "simulado"
 
     mensaje = MIMEMultipart()
     mensaje["From"] = settings.smtp_from
@@ -40,3 +43,5 @@ def enviar_denuncia(destinatario: str, asunto: str, cuerpo: str, foto_bytes: byt
         servidor.starttls()
         servidor.login(settings.smtp_user, settings.smtp_password)
         servidor.send_message(mensaje)
+
+    return "enviado"

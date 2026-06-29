@@ -521,7 +521,8 @@ backend_aiethprogram/
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `POST` | `/api/chat/message` | Recibe cada turno del chat (texto, foto en base64/multipart, ubicación, o valor de botón). Devuelve el siguiente mensaje del bot + tipo de input esperado + opciones. |
+| `POST` | `/api/chat/message` | Recibe cada turno del chat (texto, foto en base64/multipart, ubicación, o valor de botón). Devuelve el siguiente mensaje del bot + tipo de input esperado + opciones. Usa la FSM/LangGraph y persiste estado en Redis entre turnos. |
+| `POST` | `/api/denuncias` | **Alternativa de un solo disparo**, sin conversación ni sesión: recibe en una sola petición la foto (opcional) + lat/lon o dirección + tipo de lugar + descripción + anonimato/contacto, identifica la especie (sin bloquear si no se reconoce), resuelve la entidad por departamento y envía el correo, todo de una vez. Útil si el frontend prefiere manejar su propio formulario multi-paso y solo llamar al backend al final. |
 | `GET` | `/api/health` | Health check simple para monitoreo. |
 | `GET` | `/api/admin/denuncias` *(opcional, Fase 2)* | Lista las denuncias persistidas, protegido con API key, solo para revisión interna/demo. |
 

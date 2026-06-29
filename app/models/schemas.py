@@ -65,7 +65,7 @@ class EntidadDestino(BaseModel):
 class Denuncia(BaseModel):
     id: str
     timestamp: str
-    canal: Literal["web"] = "web"
+    canal: Literal["web", "api"] = "web"
     anonima: bool
     contacto: str | None = None
     foto_url: str | None = None
@@ -75,7 +75,7 @@ class Denuncia(BaseModel):
     descripcion_lugar: str | None = None
     entidad_destino: EntidadDestino | None = None
     texto_denuncia: str | None = None
-    estado_envio: Literal["pendiente", "enviado", "fallido"] = "pendiente"
+    estado_envio: Literal["pendiente", "enviado", "simulado", "fallido"] = "pendiente"
     intentos_envio: int = 0
 
 
@@ -83,3 +83,31 @@ class ConversationState(BaseModel):
     estado: EstadoFSM = EstadoFSM.ESPERANDO_FOTO
     foto_bytes_b64: str | None = None
     denuncia: Denuncia
+
+
+class DenunciaCompletaRequest(BaseModel):
+    """Payload de un solo disparo: foto + todo el contexto, sin conversación previa."""
+
+    foto_base64: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+    direccion: str | None = None
+    tipo_lugar: str | None = None
+    descripcion_lugar: str | None = None
+    anonima: bool = True
+    contacto: str | None = None
+
+
+class CorreoBorrador(BaseModel):
+    asunto: str
+    cuerpo: str
+
+
+class DenunciaCompletaResponse(BaseModel):
+    radicado: str
+    mensaje: str
+    especie: EspeciePredicha | None = None
+    ubicacion: Ubicacion | None = None
+    entidad_destino: EntidadDestino
+    estado_envio: Literal["enviado", "simulado", "fallido"]
+    correo: CorreoBorrador

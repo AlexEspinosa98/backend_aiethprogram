@@ -6,12 +6,15 @@ denuncia formal y la envía por correo (SMTP) a la entidad ambiental competente 
 Colombia.
 
 Este repositorio es **solo backend**. El frontend (chat web) es otro proyecto que
-consume `POST /api/chat/message`; su especificación está en
-[docs/plan-chatweb.md](docs/plan-chatweb.md) (secciones 4 y 7).
+consume esta API; ofrece dos formas de integrarse: un endpoint conversacional
+(`POST /api/chat/message`) o uno de un solo disparo (`POST /api/denuncias`).
 
-La arquitectura completa, el flujo conversacional y todas las decisiones de diseño
-están documentadas en **[docs/plan-chatweb.md](docs/plan-chatweb.md)**. Esta guía es
-solo el resumen práctico para levantar el proyecto.
+- **[api.md](api.md)** — referencia técnica de campos/tipos de cada endpoint.
+- **[historia_usuario.md](historia_usuario.md)** — historia de usuario, flujo paso a
+  paso y ejemplos de payloads reales.
+- **[docs/plan-chatweb.md](docs/plan-chatweb.md)** — arquitectura completa, decisiones
+  de diseño, límites de los tiers gratuitos y roadmap. Esta guía (README) es solo el
+  resumen práctico para levantar el proyecto.
 
 ## Qué hay que crear/configurar (por servicio)
 
