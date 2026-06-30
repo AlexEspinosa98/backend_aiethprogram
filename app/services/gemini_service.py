@@ -33,7 +33,12 @@ class _EspecieIdentificada(BaseModel):
 
 def _modelo() -> ChatGoogleGenerativeAI:
     settings = get_settings()
-    return ChatGoogleGenerativeAI(model=settings.gemini_model, google_api_key=settings.gemini_api_key)
+    return ChatGoogleGenerativeAI(
+        model=settings.gemini_model,
+        google_api_key=settings.gemini_api_key,
+        max_retries=0,   # falla rápido en serverless; los try/except ya manejan el fallback
+        timeout=15,      # 15 s máximo por llamada; evita quemar el timeout de Vercel (60 s)
+    )
 
 
 def _especies_referencia() -> list[dict]:
