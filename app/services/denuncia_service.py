@@ -1,4 +1,3 @@
-import base64
 import uuid
 from datetime import datetime, timezone
 
@@ -39,12 +38,12 @@ def _resolver_ubicacion(payload: DenunciaCompletaRequest) -> Ubicacion | None:
     return None
 
 
-def _identificar_especie(payload: DenunciaCompletaRequest) -> tuple[EspeciePredicha | None, bytes]:
-    if not payload.foto_base64:
+def _identificar_especie(foto_bytes: bytes | None) -> tuple[EspeciePredicha | None, bytes]:
+    if not foto_bytes:
         return None, b""
 
-    foto_bytes = image_service.comprimir_foto(base64.b64decode(payload.foto_base64))
-    especie = gemini_service.identificar_especie(foto_bytes)
+    comprimida = image_service.comprimir_foto(foto_bytes)
+    especie = gemini_service.identificar_especie(comprimida)
     especie_predicha = EspeciePredicha(
         nombre_comun=especie.get("nombre_comun", "Especie no identificada"),
         nombre_cientifico=especie.get("nombre_cientifico", "Desconocida"),
@@ -54,11 +53,13 @@ def _identificar_especie(payload: DenunciaCompletaRequest) -> tuple[EspeciePredi
     )
     # Nunca se bloquea ni se informa como error si la especie no se reconoce: se
     # sigue adelante igual con "Especie no identificada" / confianza baja.
-    return especie_predicha, foto_bytes
+    return especie_predicha, comprimida
 
 
-def procesar_denuncia_completa(payload: DenunciaCompletaRequest) -> DenunciaCompletaResponse:
-    especie_predicha, foto_bytes = _identificar_especie(payload)
+def procesar_denuncia_completa(
+    payload: DenunciaCompletaRequest, foto_bytes: bytes | None = None
+) -> DenunciaCompletaResponse:
+    especie_predicha, foto_final = _identificar_especie(foto_bytes)
     ubicacion = _resolver_ubicacion(payload)
 
     departamento = ubicacion.departamento if ubicacion else None
@@ -84,7 +85,7 @@ def procesar_denuncia_completa(payload: DenunciaCompletaRequest) -> DenunciaComp
 
     try:
         estado_envio = email_service.enviar_denuncia(
-            entidad_destino.correo, asunto, cuerpo, foto_bytes
+            entidad_destino.correo, asunto, cuerpo, foto_final
         )
     except Exception:
         estado_envio = "fallido"

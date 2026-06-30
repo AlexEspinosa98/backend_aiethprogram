@@ -1,3 +1,5 @@
+import io
+
 from fastapi.testclient import TestClient
 
 import app.routers.denuncias as denuncias_router
@@ -13,11 +15,11 @@ def test_health():
     assert resp.json() == {"status": "ok"}
 
 
-def test_denuncias_endpoint_esta_montado(monkeypatch):
+def test_denuncias_endpoint_acepta_multipart(monkeypatch):
     monkeypatch.setattr(
         denuncias_router,
         "procesar_denuncia_completa",
-        lambda payload: DenunciaCompletaResponse(
+        lambda payload, foto_bytes=None: DenunciaCompletaResponse(
             radicado="FA-2026-TEST01",
             mensaje="ok",
             especie=None,
@@ -28,6 +30,11 @@ def test_denuncias_endpoint_esta_montado(monkeypatch):
         ),
     )
 
-    resp = client.post("/api/denuncias", json={"descripcion_lugar": "prueba"})
+    resp = client.post(
+        "/api/denuncias",
+        data={"descripcion_lugar": "prueba", "anonima": "true"},
+        files={"foto": ("test.jpg", io.BytesIO(bytes.fromhex("ffd8ffd9")), "image/jpeg")},
+    )
     assert resp.status_code == 200
     assert resp.json()["radicado"] == "FA-2026-TEST01"
+    assert resp.json()["correo"]["asunto"] == "Asunto de prueba"

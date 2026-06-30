@@ -7,3 +7,4 @@ langchain-core>=0.3
 langchain-google-genai>=2.0
 langgraph>=0.2
 Pillow>=10.3
+python-multipart>=0.0.9

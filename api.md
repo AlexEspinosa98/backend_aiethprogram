@@ -92,31 +92,23 @@ recibió en `opciones`, nunca un índice.
 
 Un solo request con toda la información; no usa sesión ni Redis.
 
-### Qué recibe (`DenunciaCompletaRequest`)
+> **Content-Type: `multipart/form-data`** (no JSON).
+> La foto se sube como archivo; el resto de campos son `Form` fields.
+> En Swagger (`/docs`) aparece directamente un botón "Browse…" para seleccionar la foto
+> y campos de texto para cada parámetro.
+
+### Qué recibe (multipart/form-data)
 
 | Campo | Tipo | Requerido | Default | Descripción |
 |---|---|---|---|---|
-| `foto_base64` | string (base64) | No | `null` | Si se omite, la denuncia se procesa sin identificación de especie. |
-| `lat` | float | No | `null` | Preferido sobre `direccion` si ambos vienen. |
-| `lon` | float | No | `null` | — |
-| `direccion` | string | No | `null` | Alternativa a `lat`/`lon`; se geocodifica con Nominatim. |
-| `tipo_lugar` | string | No | `null` | Texto libre (ej. "Negocio", "Casa"); no hay lista fija en este endpoint. |
-| `descripcion_lugar` | string | No | `null` | Descripción de lo observado. |
-| `anonima` | bool | No | `true` | Si es `false`, se usa `contacto` en la denuncia. |
-| `contacto` | string | No | `null` | Se ignora si `anonima: true`. |
-
-```json
-{
-  "foto_base64": "<base64, opcional>",
-  "lat": 6.1521,
-  "lon": -75.3838,
-  "direccion": null,
-  "tipo_lugar": "Negocio",
-  "descripcion_lugar": "Restaurante con el animal en una jaula pequeña en la entrada",
-  "anonima": true,
-  "contacto": null
-}
-```
+| `foto` | file (JPEG/PNG) | No | — | Si se omite, la denuncia se procesa sin identificación de especie. |
+| `lat` | float | No | — | Latitud GPS. Preferido sobre `direccion` si ambos vienen. |
+| `lon` | float | No | — | Longitud GPS. |
+| `direccion` | string | No | — | Alternativa a `lat`/`lon`; se geocodifica con Nominatim. |
+| `tipo_lugar` | string | No | — | Texto libre (ej. `Negocio`, `Casa`, `Hotel`, `Zona rural`). |
+| `descripcion_lugar` | string | No | — | Breve descripción de lo observado. |
+| `anonima` | bool | No | `true` | `false` = incluir los datos de `contacto` en la denuncia. |
+| `contacto` | string | No | — | Nombre/teléfono del denunciante (se ignora si `anonima=true`). |
 
 ### Qué responde (`DenunciaCompletaResponse`)
 
@@ -188,3 +180,110 @@ obligatorias faltan, la app ni siquiera arranca — ver `app/core/config.py`).
   del correo falló (ej. credenciales SMTP inválidas); no es un error HTTP, el
   `radicado` y el borrador ya existen igual.
 - No hay otros códigos de error definidos hoy (sin autenticación, sin rate limiting).
+
+---
+
+## Cómo probar
+
+### Swagger UI (en el navegador)
+
+Abre **`https://tu-backend.vercel.app/docs`** (o `http://localhost:8000/docs` en local).
+
+- `/api/health` → un solo clic en "Execute".
+- `/api/denuncias` → el campo `foto` muestra un botón **Browse…** para subir el archivo directamente; el resto son campos de texto normales.
+- `/api/chat/message` → pega el JSON en el body y ejecuta.
+
+### curl — `/api/health`
+
+```bash
+curl https://tu-backend.vercel.app/api/health
+```
+
+### curl — `/api/denuncias` (con foto)
+
+```bash
+curl -X POST https://tu-backend.vercel.app/api/denuncias \
+  -F "foto=@/ruta/a/foto.jpg" \
+  -F "lat=6.1521" \
+  -F "lon=-75.3838" \
+  -F "tipo_lugar=Negocio" \
+  -F "descripcion_lugar=Restaurante con el animal en una jaula pequeña en la entrada" \
+  -F "anonima=true"
+```
+
+### curl — `/api/denuncias` (sin foto, solo descripción y ubicación)
+
+```bash
+curl -X POST https://tu-backend.vercel.app/api/denuncias \
+  -F "lat=6.1521" \
+  -F "lon=-75.3838" \
+  -F "descripcion_lugar=Vi un animal herido en la vía" \
+  -F "anonima=true"
+```
+
+### curl — `/api/denuncias` (con datos de contacto, no anónima)
+
+```bash
+curl -X POST https://tu-backend.vercel.app/api/denuncias \
+  -F "foto=@/ruta/a/foto.jpg" \
+  -F "lat=4.7110" \
+  -F "lon=-74.0721" \
+  -F "tipo_lugar=Casa" \
+  -F "descripcion_lugar=Loro enjaulado en una vivienda del barrio" \
+  -F "anonima=false" \
+  -F "contacto=Juan Pérez, 310 000 0000"
+```
+
+### curl — `/api/chat/message` (flujo conversacional)
+
+```bash
+# 1. Enviar saludo (chat abierto antes de la foto)
+curl -X POST https://tu-backend.vercel.app/api/chat/message \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "test-001", "tipo": "texto", "texto": "hola, cómo funciona esto?"}'
+
+# 2. Enviar foto (convierte foto a base64 primero)
+FOTO_B64=$(base64 -i /ruta/a/foto.jpg | tr -d '\n')
+curl -X POST https://tu-backend.vercel.app/api/chat/message \
+  -H "Content-Type: application/json" \
+  -d "{\"session_id\": \"test-001\", \"tipo\": \"foto\", \"foto_base64\": \"$FOTO_B64\"}"
+
+# 3. Confirmar especie (usar el texto exacto del campo opciones)
+curl -X POST https://tu-backend.vercel.app/api/chat/message \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "test-001", "tipo": "boton", "texto": "Sí"}'
+
+# 4. Compartir ubicación GPS
+curl -X POST https://tu-backend.vercel.app/api/chat/message \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "test-001", "tipo": "ubicacion", "lat": 6.1521, "lon": -75.3838}'
+
+# 5. Confirmar ubicación
+curl -X POST https://tu-backend.vercel.app/api/chat/message \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "test-001", "tipo": "boton", "texto": "Sí, es correcta"}'
+
+# 6. Tipo de lugar
+curl -X POST https://tu-backend.vercel.app/api/chat/message \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "test-001", "tipo": "boton", "texto": "Negocio"}'
+
+# 7. Descripción
+curl -X POST https://tu-backend.vercel.app/api/chat/message \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "test-001", "tipo": "texto", "texto": "Restaurante con el animal en una jaula"}'
+
+# 8. Anonimato
+curl -X POST https://tu-backend.vercel.app/api/chat/message \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "test-001", "tipo": "boton", "texto": "Sí, anónima"}'
+
+# 9. Confirmar envío
+curl -X POST https://tu-backend.vercel.app/api/chat/message \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "test-001", "tipo": "boton", "texto": "Confirmar y enviar"}'
+```
+
+> En macOS el comando `base64` incluye saltos de línea por defecto; el `tr -d '\n'`
+> los elimina. En Linux: `base64 -w 0 /ruta/a/foto.jpg`. En Windows
+> (PowerShell): `[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\foto.jpg"))`.

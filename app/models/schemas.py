@@ -86,9 +86,10 @@ class ConversationState(BaseModel):
 
 
 class DenunciaCompletaRequest(BaseModel):
-    """Payload de un solo disparo: foto + todo el contexto, sin conversación previa."""
+    """Payload de un solo disparo: la foto llega como UploadFile (multipart/form-data),
+    el resto como Form fields. Esta clase se usa internamente para pasar los campos
+    de texto al servicio; la foto ya llega como bytes."""
 
-    foto_base64: str | None = None
     lat: float | None = None
     lon: float | None = None
     direccion: str | None = None
