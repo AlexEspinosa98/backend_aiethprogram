@@ -56,6 +56,31 @@ def _identificar_especie(foto_bytes: bytes | None) -> tuple[EspeciePredicha | No
     return especie_predicha, comprimida
 
 
+def _construir_mensaje(especie, entidad_nombre: str) -> str:
+    if especie is None:
+        return (
+            f"✅ Tu denuncia fue procesada y enviada a {entidad_nombre}. "
+            "No se aportó fotografía, así que no se pudo identificar la especie. "
+            "Gracias por proteger la fauna silvestre de Colombia."
+        )
+
+    if especie.confianza == "baja":
+        return (
+            f"✅ Tu denuncia fue procesada y enviada a {entidad_nombre}. "
+            f"Se recibió la foto, pero no fue posible identificar la especie con certeza "
+            f"(posiblemente {especie.nombre_comun}). "
+            "Gracias por proteger la fauna silvestre de Colombia."
+        )
+
+    return (
+        f"✅ Tu denuncia fue procesada y enviada a {entidad_nombre}.\n"
+        f"Animal identificado: {especie.nombre_comun} ({especie.nombre_cientifico}) — "
+        f"categoría de amenaza: {especie.categoria_amenaza} — "
+        f"confianza: {especie.confianza}.\n"
+        "Gracias por proteger la fauna silvestre de Colombia."
+    )
+
+
 def procesar_denuncia_completa(
     payload: DenunciaCompletaRequest, foto_bytes: bytes | None = None
 ) -> DenunciaCompletaResponse:
@@ -92,10 +117,7 @@ def procesar_denuncia_completa(
 
     return DenunciaCompletaResponse(
         radicado=denuncia.id,
-        mensaje=(
-            "Tu denuncia fue procesada y enviada a la entidad competente. Gracias por "
-            "proteger la fauna silvestre de Colombia."
-        ),
+        mensaje=_construir_mensaje(especie_predicha, entidad_destino.nombre),
         especie=especie_predicha,
         ubicacion=ubicacion,
         entidad_destino=entidad_destino,
